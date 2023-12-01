@@ -169,7 +169,7 @@ def draw_tiles(population, *, rnd=None):
         k = yield res
 
 words = []
-with open('/usr/share/dict/words') as f:
+with open('C:/Users/Darragh/Documents/Python/dutc/words.txt') as f:
     for word in f:
         word = word.strip()
         if word.isalpha() and len(word) >= 3 and word.islower():
@@ -187,7 +187,7 @@ print(
 
 # tests
 
-from scabble import score, POINTS
+# from scabble import score, POINTS
 
 from hypothesis import given
 from hypothesis.strategies import text
