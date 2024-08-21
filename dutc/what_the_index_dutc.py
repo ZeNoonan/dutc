@@ -1,9 +1,9 @@
 # sourcery skip: merge-list-append
 import pandas as pd
 import numpy as np
-from numpy import unique,where,array
+from numpy import unique,where,array,tile
 import streamlit as st
-from pandas import DataFrame,MultiIndex, Series,concat, get_dummies, NA, Timestamp, to_timedelta, concat as pd_concat, CategoricalIndex,date_range
+from pandas import DataFrame,MultiIndex,period_range,IndexSlice, Series,merge,concat, get_dummies, NA, Timestamp, to_timedelta, concat as pd_concat, CategoricalIndex,date_range
 from string import ascii_lowercase
 from collections import Counter
 from itertools import islice, groupby, pairwise, cycle, tee, zip_longest, chain, repeat, takewhile
@@ -32,7 +32,181 @@ with st.expander("James Powell Pandas"):
     st.write('monthly sales level',monthly_sales.index.levels)
     st.write('monthly sales index',monthly_sales.index)
     st.write('index',index)
-    st.write('reindex',forecast.reindex(index,level=forecast.index.name))
+    with st.echo():
+        st.write('reindex',forecast.reindex(index,level=forecast.index.name))
+        # st.write('level name',forecast.index.name)
+        st.write('monthly sales', monthly_sales)
+        st.write(monthly_sales * forecast.reindex(index,level=forecast.index.name))
+
+    rng=default_rng(0)
+    df = DataFrame(
+        index=(idx := MultiIndex.from_product([
+            period_range('2000-01-01', periods=8,freq='Q'),
+            ['New York','Chicago','San Francisco'],
+        ],names=['quarter','location'])),
+        data={
+            'revenue': +rng.normal(loc=10_000,scale=1_000,size=len(idx)).round(-1),
+            'expenses': -rng.normal(loc=10_000,scale=1_000,size=len(idx)).round(-1),
+            'manager': tile(['Alice Adams','Bob Brown','Charlie Cook','Dana Daniels'], len(idx)//4),
+        }
+    ).pipe(lambda df:
+           merge(
+               df,
+               Series(
+                   index=(idx := df['manager'].unique()),
+                   data=rng.choice([True,False],p=[.75,.25],size=len(idx)),
+                   name='franchise',
+               ),
+               left_on='manager',
+               right_index=True,
+        )
+    )
+
+    st.write('mad df',df.sort_index())
+    st.write(df[~df['franchise']])
+
+    # test_df = DataFrame(
+    #     index=(idx := MultiIndex.from_product([
+    #         period_range('2000-01-01', periods=8,freq='D'),
+    #         ['New York','Chicago','San Francisco'],
+    #     ],names=['quarter','location'])),
+    #     data={
+    #         'revenue': +rng.normal(loc=10_000,scale=1_000,size=len(idx)).round(-1),
+    #         'expenses': -rng.normal(loc=10_000,scale=1_000,size=len(idx)).round(-1),
+    #         'manager': tile(['Alice Adams','Bob Brown','Charlie Cook'], len(idx)//3),
+    #     }
+    # )
+
+    sales = DataFrame(
+        index=(idx := MultiIndex.from_product([
+            date_range('2000-01-01', periods=20,freq='D'),
+            ['New York','Chicago','San Francisco','Houston'],
+            ['burger','fries','combo','milkshakes'],
+        ],names=['date','location','item'])),
+        data={
+            'quantity': +rng.normal(loc=10_000,scale=1_000,size=len(idx)).round(-1),
+            
+        }
+    )
+    
+
+    sales_test = DataFrame(
+        index=(idx := MultiIndex.from_product([
+            date_range('2000-01-01', periods=20,freq='D'),
+            ['New York','Chicago','San Francisco'],
+            # tile(['burger','fries','combo','milkshakes'], len(idx)//4),
+        ],names=['date','location'])),
+        data={
+            'quantity': +rng.normal(loc=10_000,scale=1_000,size=len(idx)).round(-1),
+            'item': tile(['burger','fries','combo','milkshakes'], len(idx)//4),
+            
+        }
+    )
+    # .set_index(['date','location','item'])
+    # st.write('test sales', sales_test,'PUT in index')
+
+    # st.write('sales',sales,'unstack sales',sales.unstack('item','fill_value=0'))
+    # st.write('test sales',sales_test)
+
+
+    # Define the MultiIndex
+    date_rng = pd.date_range('2000-01-01', periods=20, freq='D')
+    locations = ['New York', 'Chicago', 'San Francisco']
+    items = ['hamburger', 'french fry', 'combo', 'milkshake']
+
+    idx = pd.MultiIndex.from_product([date_rng, locations, items], names=['date', 'location', 'item'])
+
+    # Generate random sales data
+    np.random.seed(42)
+    quantities = np.random.normal(loc=10_000, scale=1_000, size=len(idx)).round(-1)
+
+    # Create the DataFrame
+    sales = pd.DataFrame({'quantity': quantities}, index=idx)
+
+    # Randomly select some 'combo' rows to set their quantity to zero
+    combo_idx = sales.index.get_level_values('item') == 'combo'
+    combo_rows = sales[combo_idx]
+
+    # Choose a random subset of these combo rows
+    random_combo_idx = np.random.choice(combo_rows.index, size=int(len(combo_rows) * 0.3), replace=False)
+
+    # Set the 'quantity' of the selected random combo rows to zero
+    sales.loc[random_combo_idx, 'quantity'] = 0
+
+    # Drop some random dates to simulate missing dates
+    dates_to_remove = np.random.choice(date_rng, size=3, replace=False)
+    df = sales.drop(index=dates_to_remove, level='date')
+
+    # Display the result
+    st.write('update from chat gpt where we have some combos=0 and some missing dates',df,'unstack on this',df.unstack('item','fill_value=0'))
+
+
+    
+    unstack_sales=(df
+             .unstack('item','fill_value=0')
+             .pipe(lambda df: df
+                   .reindex(
+                       MultiIndex.from_product([
+                           date_range((dts := df.index.get_level_values('date')).min(), dts.max(), freq='D'),
+                           df.index.get_level_values('location').unique(),
+                        ], names=df.index.names),
+                        fill_value=0,
+                   )
+                   ).pipe(lambda df: df.droplevel(0, axis=1))
+             )
+    # st.write('this is the clean up operations',unstack_sales)
+    # unstack_sales.columns = unstack_sales.columns.droplevel(0) # for some reason when I do unstack i have to drop down a level for column names, james powell
+    # didn't seem to get this error
+    # fixed by asking chat gpt how i could fit the above into it so added this to james code
+    # .pipe(lambda df: df.droplevel(0, axis=1))
+    st.write(unstack_sales.loc[IndexSlice[:,['Chicago','New York'],   :]])
+    st.write(unstack_sales.columns)
+
+    st.write(df
+             .unstack('item','fill_value=0')
+             .pipe(lambda df: df
+                   .reindex(
+                       MultiIndex.from_product([
+                           date_range((dts := df.index.get_level_values('date')).min(), dts.max(), freq='D'),
+                           df.index.get_level_values('location').unique(),
+                        ], names=df.index.names),
+                        fill_value=0,
+                   )
+                   ).pipe(lambda df: df.droplevel(0, axis=1)).pipe(lambda df:
+                          concat([
+                              concat([
+                                  df.loc[IndexSlice[:,['Chicago','New York'],   :]][['french fry','hamburger','milkshake',]],
+                                  df.loc[IndexSlice[:,['San Francisco'],        :]][['french fry','hamburger',            ]].assign(milkshake=0),
+                                  ],axis='index').sort_index()
+                              .rename(lambda x: ('combo',x), axis='columns'),
+                              df[['french fry','hamburger','milkshake']]
+                              .rename(lambda x: ('solo', x), axis='columns'),
+                          ],axis='columns')
+                          .pipe(lambda df: df.set_axis(MultiIndex.from_tuples(df.columns),axis='columns'))
+                          .rename_axis(['order type', 'item'], axis='columns')
+            )
+    
+    
+                          .sort_index()
+    # )
+                          .groupby('item',axis='columns').sum()
+             )
+                    
+    # st.write('full output', full_output)
+    # st.write('index length',len(idx := MultiIndex.from_product([
+    #         period_range('2000-01-01', periods=8,freq='D'),
+    #         ['New York','Chicago','San Francisco'],
+    #     ],names=['quarter','location'])))
+    # st.write('index',DataFrame(index=(idx := MultiIndex.from_product([
+    #         period_range('2000-01-01', periods=8,freq='D'),
+    #         ['New York','Chicago','San Francisco'],
+    #     ],names=['quarter','location']))))
+    
+    # st.write('test df', test_df.sort_index())
+    # st.write(len(idx))
+    # st.write(len(idx)//7)
+    # st.write(tile(['Alice Adams','Bob Brown','Charlie Cook','Dana Daniels'], len(idx)//4))
+    # st.write(tile(['Alice Adams','Bob Brown','Charlie Cook','Dana Daniels'], len(idx)//12))
 
 with st.expander("groupby cam riddell answer"):
     st.write('')
@@ -163,7 +337,7 @@ while True:
         break
 
 # function/subroutine
-def f(data, *, mode=True):
+def f(data, *, mode=True):  # sourcery skip: for-append-to-extend, list-comprehension
     rv=[]
     for x in data:
         rv.append(x*2 if mode else x**2)
@@ -529,6 +703,7 @@ def extract_unique(column):
     splitted = column.split('/')
     return splitted[0], splitted[1][:10]
 
+# sourcery skip: merge-list-append
 result = {}
 for _, col_group in groupby(sorted(df.columns), key=extract_unique):
     first, *remaining = col_group
