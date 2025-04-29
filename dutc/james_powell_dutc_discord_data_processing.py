@@ -64,12 +64,12 @@ if __name__ == '__main__':
     
     # Define preprocessing steps
     def remove_outliers(data_list):
-        """Remove values that are more than 2 standard deviations from the mean"""
+        """Remove values that are more than 1 standard deviations from the mean"""
         if not data_list:
             return data_list
         s = pd.Series(data_list)
         mean, std = s.mean(), s.std()
-        return list(s[(s > mean - 2*std) & (s < mean + 2*std)])
+        return list(s[(s > mean - 1*std) & (s < mean + 1*std)])
     
     def normalize(data_list):
         """Normalize values to range [0,1]"""
@@ -90,6 +90,10 @@ if __name__ == '__main__':
         Preprocess('Square Values', square_values)
     }
     
+    process_1=Preprocess('Remove Outliers', square_values)
+    result_1=process_1(data)
+    st.write('this is the result 1', result_1.result)
+
     # Generate all possible pipeline combinations
     pipelines = {Pipeline(steps) for steps in powerset(preprocessing)}
     
@@ -112,7 +116,9 @@ if __name__ == '__main__':
     
     st.write("Data:", data)
     st.write("\nPipeline Results:")
-    st.write(df)
+    st.write(df.applymap(lambda x: f"{float(x):.6f}")) # https://claude.ai/chat/e27d1ac2-b777-4412-b2ef-534863660105
+
+    
     
     # Print example of processed data for a specific pipeline
     st.write("\nExample of processed data:")
