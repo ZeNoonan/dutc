@@ -11,7 +11,7 @@ from random import Random
 from enum import Enum
 from string import ascii_lowercase, digits
 
-st.set_page_config(layout="wide")
+# st.set_page_config(layout="wide")
 
 # https://www.youtube.com/watch?v=Bj8yyS1o_hI
 # Deltas - State DUTC JP video
@@ -76,14 +76,17 @@ lifecycles.to_csv('C:/Users/Darragh/Documents/Python/dutc/lifecycles.csv')
      # read csv file
 df_csv = pd.read_csv('C:/Users/Darragh/Documents/Python/dutc/lifecycles.csv')
 # Convert state strings back to Enum values
+st.write('df csv before error of the Enum below',df_csv)
 df_csv['state'] = df_csv['state'].apply(lambda x: State[x])
-# Reset index if it was stored as index in the CSV
-if 'device' in df_csv.columns and 'state' in df_csv.columns:
-    pass  # Index was already reset when saving
-else:
-    df_csv = df_csv.reset_index()
-st.write('df csv',df_csv)
-st.write('this is james code',
+df_csv=df_csv.set_index(['device', 'state'])
+# # Reset index if it was stored as index in the CSV
+# if 'device' in df_csv.columns and 'state' in df_csv.columns:
+#     pass  # Index was already reset when saving
+# else:
+#     df_csv = df_csv.reset_index()
+
+# st.write('df csv',df_csv)
+st.write('this is james code of Maintenance counts',
      df_csv.reset_index('state', drop=False).set_index('time',append=True)
      .groupby('device').agg(lambda g: sum(1 for x in g if x is State.Maintenance))
 )
@@ -92,17 +95,17 @@ maintenance_counts = (
     df_csv.reset_index()  # Reset both 'device' and 'state' indices
     .set_index(['device', 'time'])   # Set new index
     .groupby('device')['state']      # Group by device and select the state column
-    .apply(lambda states: sum(1 for state in states if state == State.Maintenance))
+    .agg(lambda states: sum(1 for state in states if state == State.Maintenance))
 )
-st.write('claude 1',maintenance_counts)
+st.write('claude version of maintenance counts',maintenance_counts)
 
-maintenance_counts_alt = (
-    df_csv.reset_index()
-    .query("state == @state.Maintenance")  # Filter for maintenance states
-    .groupby('device').size()              # Count occurrences by device
-)
+# maintenance_counts_alt = (
+#     df_csv.reset_index()
+#     .query("state == @state.Maintenance")  # Filter for maintenance states
+#     .groupby('device').size()              # Count occurrences by device
+# )
 
-st.write('claude 2',maintenance_counts_alt)
+# st.write('claude 2',maintenance_counts_alt)
 
      # lifecycles = (
      #    DataFrame(simulate(), columns = 'state time'.split())

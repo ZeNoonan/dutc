@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import product, chain
 from random import Random
+from functools import wraps
 import streamlit as st
 
 st.set_page_config(layout="wide")
@@ -326,6 +327,7 @@ def strategy(dt, trades, market):
         *new_trades, *liquidate(new_trades)
     ]
 
+# 30.49mins
 if __name__ == '__main__':
     initial_trades = [Series(
         index=Index(['USD'], dtype=assets.dtype),
@@ -333,3 +335,21 @@ if __name__ == '__main__':
     )]
     trades = simulate(initial_trades, date_range('2020-01-01', '2020-12-31'), strategy, market)
                       
+# min 33.02
+SimulationState = ...
+def simulate():
+
+    while True:
+        yield SimulationState(...)
+
+def strategy():
+    while True:
+        new_trades = ...
+        state = yield new_trades
+
+# 33.40 mins
+# @lambda coro: wraps(lambda *a, **kw:
+#                      ci := coro(*a, **kw),
+#                      next(ci),
+
+# ][0])
