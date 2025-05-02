@@ -99,6 +99,14 @@ maintenance_counts = (
 )
 st.write('claude version of maintenance counts',maintenance_counts)
 
+print('this is james code of Maintenance counts',
+         df_csv.groupby('device').filter(
+              lambda g: State.Provisioned in {*df_csv.index.get_level_values('state')}
+              and
+              State.Decommissioned in {*df_csv.index.get_level_values('state')}
+         )
+)
+
 # maintenance_counts_alt = (
 #     df_csv.reset_index()
 #     .query("state == @state.Maintenance")  # Filter for maintenance states
