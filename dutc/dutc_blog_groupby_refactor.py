@@ -10,7 +10,7 @@ pd_df = DataFrame({
     'Value': [1, 4, 2, 5, 3, 6]
 })
 
-st.write(pd_df)
+st.write('this is the dataframe',pd_df)
 
 st.write('result should look like',DataFrame({
     'Name': ['Alice', 'Bob', 'John'],
@@ -31,21 +31,7 @@ def custom_agg(group):
         'Value': longest_desc_df['Value']
     })
 
-st.write(pd_df.groupby('Name').apply(custom_agg, include_groups=False).droplevel(1))
-
-def custom_agg(group):
-    longest_desc_df = (
-        group.assign(_strlen=group['Description'].str.len())
-        .nlargest(1, '_strlen')
-    )
-
-    return DataFrame({
-        'Source': ', '.join(group['Source'].sort_values()),
-        'Description': longest_desc_df['Description'],
-        'Value': longest_desc_df['Value']
-    })
-
-st.write('custom agg',pd_df.groupby('Name').apply(custom_agg, include_groups=False).droplevel(1))
+st.write('using apply',pd_df.groupby('Name').apply(custom_agg, include_groups=False).droplevel(1))
 
 def custom_agg(group):
     longest_desc_loc = (
@@ -88,6 +74,33 @@ def refactored_pandas():
 
 st.write('refactored pandas',refactored_pandas())
 
+st.write('broken down the refactored pandas',
+        pd_df
+        .assign( # pre-compute any computation used equally across all groups
+            _desc_length=lambda d: d['Description'].str.len(),
+        ))
+
+
+
+st.write('broken down the refactored pandas',
+        pd_df
+        .assign( # pre-compute any computation used equally across all groups
+            _desc_length=lambda d: d['Description'].str.len(),
+        )
+        .groupby('Name').agg(
+            Source=('Source', lambda g: ', '.join(sorted(g))), # can't avoid a UDF here
+            longest_desc_location=('_desc_length', 'idxmax')   # avoided a UDF
+        )
+        # .merge( # fetches the "Description" and "Value" where we observed the longest description
+        #     pd_df.drop(columns=["Name", "Source"]),
+        #     left_on="longest_desc_location",
+        #     right_index=True
+        # )
+        # .drop(columns=['longest_desc_location']) # Remove intermediate/temp columns
+    )
+
+
+
 from random import Random
 from numpy import unique
 from numpy.random import default_rng
@@ -97,18 +110,18 @@ from string import ascii_uppercase
 rnd = Random(0)
 rng = default_rng(0)
 categories = unique(
-    rng.choice([*ascii_uppercase], size=(10_000, length := 4), replace=True)
+    rng.choice([*ascii_uppercase], size=(100, length := 4), replace=True)
     .view(f'<U{length}')
 )
 
 pd_df = DataFrame({
-    'Name'   : categories.repeat(reps := 100),
+    'Name'   : categories.repeat(reps := 10),
     'Source' : rng.choice([*ascii_uppercase], size=(len(categories) * reps, 2)).view('<U2').ravel(),
     'Description' : [
         "".join(rnd.choices(ascii_uppercase, k=rnd.randrange(0, 10)))
         for _ in range(len(categories) * reps)
     ],
-    'Value' : rng.integers(0, 1_000_000, size=(reps * categories.size)),
+    'Value' : rng.integers(0, 100, size=(reps * categories.size)),
 }).sample(frac=1, replace=True).reset_index(drop=True)
 
 st.write((f'{len(pd_df) = :,} rows'))
@@ -131,4 +144,4 @@ st.write('another solution',
         Description=('Description', 'first'),
         Value=('Value', 'first'),
     )
-))
+).head())

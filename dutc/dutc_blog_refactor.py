@@ -79,10 +79,89 @@ st.write('claude gave a great write up on the lambda and the benefits of using i
 st.write('the benefit is that by using the lambda it will invoke the function on all datasets except for the ones that are explicity called out like b and c')
 
 st.write('processors', processors)
-print(sum_of_squares)
-# print(processors)
+st.write(sum_of_squares)
+# st.write(processors)
 results = {
     label: processors[label](values) for label, values in datasets.items()
 }
 for label, result in results.items():
     st.write(f'{label}_result → {result:>4}')
+    
+st.write('results dictionary', results)
+
+# https://claude.ai/chat/5b52041f-1146-4bf0-968d-f46ccc2bc352
+# Create a sample DataFrame
+df = pd.DataFrame({
+    'group': ['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'c', 'c', 'c', 'c'],
+    'value': [1, 2, 3, 4, 5, 6, 0, -1, -10,8,4,0]
+})
+
+st.write("Original DataFrame:")
+st.write(df)
+
+# Group by 'group' column
+grouped = df.groupby('group')
+
+# Define transformation functions for pandas
+def pandas_sum_of_squares(group_df):
+    return group_df['value'].pow(2).sum()
+
+def pandas_sum_of_cubes(group_df):
+    return group_df['value'].pow(3).sum()
+
+# Create a processor mapping
+pandas_processors = defaultdict(lambda: pandas_sum_of_squares)
+pandas_processors['b'] = pandas_sum_of_cubes
+pandas_processors['c'] = pandas_sum_of_cubes
+
+# Process each group with its corresponding function
+pandas_results = {}
+for group_name, group_data in grouped:
+    pandas_results[group_name] = pandas_processors[group_name](group_data)
+
+st.write("\n pandas results dictionary:", pandas_results)
+st.write("\nResults using custom processors:")
+for label, result in pandas_results.items():
+    st.write(f'{label}_result → {result:>4}')
+
+
+# Create three separate DataFrames similar to the original datasets
+df_a = pd.DataFrame({'value': [1, 2, 3, 4]})
+df_b = pd.DataFrame({'value': [5, 6, 0, -1]})
+df_c = pd.DataFrame({'value': [-10, 8, 4, 0]})
+
+# Store DataFrames in a dictionary (similar to original datasets)
+dataframes = {
+    'a': df_a,
+    'b': df_b,
+    'c': df_c
+}
+
+st.write("DataFrame a:")
+st.write(df_a)
+st.write("\nDataFrame b:")
+st.write(df_b)
+st.write("\nDataFrame c:")
+st.write(df_c)
+
+# Define transformation functions for pandas DataFrames
+def pandas_sum_of_squares(df):
+    return df['value'].pow(2).sum()
+
+def pandas_sum_of_cubes(df):
+    return df['value'].pow(3).sum()
+
+# Create a processor mapping with defaultdict
+pandas_processors = defaultdict(lambda: pandas_sum_of_squares)
+pandas_processors['b'] = pandas_sum_of_cubes
+pandas_processors['c'] = pandas_sum_of_cubes
+
+# Process each DataFrame with its corresponding function
+pandas_results = {
+    label: pandas_processors[label](df) for label, df in dataframes.items()
+}
+
+st.write("\nResults using DataFrame processors:")
+st.write("\n pandas results dictionary:", pandas_results)
+# for label, result in pandas_results.items():
+#     st.write(f'{label}_result → {result:>4}')
