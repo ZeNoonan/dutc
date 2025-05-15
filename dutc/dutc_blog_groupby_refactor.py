@@ -31,7 +31,7 @@ def custom_agg(group):
         'Value': longest_desc_df['Value']
     })
 
-st.write('using apply',pd_df.groupby('Name').apply(custom_agg, include_groups=False).droplevel(1))
+# st.write('using apply',pd_df.groupby('Name').apply(custom_agg, include_groups=False).droplevel(1))
 
 def custom_agg(group):
     longest_desc_loc = (
@@ -51,7 +51,7 @@ def custom_agg(group):
 def naive_pandas(): # put into a function for later comparison
     return pd_df.groupby('Name').apply(custom_agg, include_groups=False).droplevel(1)
 
-st.write('naive pandas', naive_pandas())
+# st.write('naive pandas', naive_pandas())
 # naive_pandas()
 
 def refactored_pandas():
@@ -72,17 +72,31 @@ def refactored_pandas():
         .drop(columns=['longest_desc_location']) # Remove intermediate/temp columns
     )
 
-st.write('refactored pandas',refactored_pandas())
+# st.write('refactored pandas',refactored_pandas())
 
-st.write('broken down the refactored pandas',
+st.write('First part to merge into',
         pd_df
         .assign( # pre-compute any computation used equally across all groups
             _desc_length=lambda d: d['Description'].str.len(),
-        ))
+        )
+        .groupby('Name').agg(
+            Source=('Source', lambda g: ', '.join(sorted(g))), # can't avoid a UDF here
+            longest_desc_location=('_desc_length', 'idxmax')   # avoided a UDF
+        )
+        )
+
+test_1= pd_df
+test_1['_desc_length'] = test_1['Description'].str.len()
+test_2=test_1.groupby('Name')
+# for x,y in test_2:
+#     # st.write('group x',x)
+#     st.write('group y',y)
+#     st.write('group y',y['_desc_length'].idxmax())
+
+st.write('merge into this',pd_df.drop(columns=["Name", "Source"]))
 
 
-
-st.write('broken down the refactored pandas',
+st.write('broken down the refactored pandas as we go',
         pd_df
         .assign( # pre-compute any computation used equally across all groups
             _desc_length=lambda d: d['Description'].str.len(),
