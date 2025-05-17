@@ -105,12 +105,12 @@ st.write('broken down the refactored pandas as we go',
             Source=('Source', lambda g: ', '.join(sorted(g))), # can't avoid a UDF here
             longest_desc_location=('_desc_length', 'idxmax')   # avoided a UDF
         )
-        # .merge( # fetches the "Description" and "Value" where we observed the longest description
-        #     pd_df.drop(columns=["Name", "Source"]),
-        #     left_on="longest_desc_location",
-        #     right_index=True
-        # )
-        # .drop(columns=['longest_desc_location']) # Remove intermediate/temp columns
+        .merge( # fetches the "Description" and "Value" where we observed the longest description
+            pd_df.drop(columns=["Name", "Source"]),
+            left_on="longest_desc_location",
+            right_index=True
+        )
+        .drop(columns=['longest_desc_location']) # Remove intermediate/temp columns
     )
 
 
